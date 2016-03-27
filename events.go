@@ -3,6 +3,10 @@ package main
 
 import "strings"
 
+type BellEvent struct {
+	user *User
+}
+
 type JoinEvent struct {
 	user *User
 }
@@ -31,9 +35,10 @@ func constructEvent(user *User, eventString string) interface{} {
 	}
 	if strings.HasPrefix(eventString, `/`) {
 		// Attempt to parse command.
-		// Currently, no commands.
+
+		// Change name
+		// /name <newName>
 		if strings.HasPrefix(eventString, `/name `) {
-			// /name <newname>
 			previousName := user.name
 			newName := strings.SplitN(eventString, " ", 2)[1] // Strip off the command
 
@@ -45,6 +50,12 @@ func constructEvent(user *User, eventString string) interface{} {
 				user:         user,
 				previousName: previousName,
 				newName:      newName}
+		}
+
+		// Ring the bell
+		// /bell
+		if eventString == "/bell" {
+			return BellEvent{user: user}
 		}
 	}
 

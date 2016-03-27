@@ -36,13 +36,19 @@ func main() {
 			log.Print(err)
 			continue
 		}
-		go handleConn(conn, eventChan)
+
+		// Setup a new user.
+		user := new(User)
+		user.outputChan = make(chan string)
+		user.name = conn.RemoteAddr().String()
+
+		go handleConn(conn, user, eventChan)
 	}
 }
 
 func eventHandler(eventChan <-chan interface{}) {
-	// Listen on eventChan, and react to each event.
-	// Keeps track of Users so it can broadcast messages, if needed.
+	// React to events on eventChan as required.
+	// Keeps track of connected users for broadcasting purposes.
 
 	// Set of connected Users.
 	users := make(map[*User]bool)
@@ -57,6 +63,8 @@ func eventHandler(eventChan <-chan interface{}) {
 	// React to each event.
 	for event := range eventChan {
 		switch event := event.(type) {
+		case BellEvent:
+			broadcastMsg("<<< " + event.user.name + " rang the bell >>>")
 		case JoinEvent:
 			users[event.user] = true
 			broadcastMsg(event.user.name + " has joined")
@@ -74,15 +82,13 @@ func eventHandler(eventChan <-chan interface{}) {
 	}
 }
 
-func handleConn(conn net.Conn, eventChan chan<- interface{}) {
-	// Called for each user. Handles events caused by this user, and places them
-	// on the specified `eventChan` in the required format.
-	// Also creates the struct representing the new user.
+func handleConn(conn net.Conn, user *User, eventChan chan<- interface{}) {
+	// Handles a single connection between the server and a user
+	// This involves passing output to the user (from the user's outputChan),
+	// and interpreting user input into events that can be placed onto the
+	// eventChan.
 
-	// Setup a new user.
-	user := new(User)
-	user.outputChan = make(chan string)
-	user.name = conn.RemoteAddr().String()
+	// Handle output to user.
 	go func() {
 		// For each message to the outputChan, print to user.
 		for msg := range user.outputChan {
@@ -93,7 +99,7 @@ func handleConn(conn net.Conn, eventChan chan<- interface{}) {
 	// Send the join event
 	eventChan <- JoinEvent{user: user}
 
-	// Process input
+	// Handle input from user.
 	input := bufio.NewScanner(conn)
 	for input.Scan() {
 		if input.Err() != nil {
@@ -101,10 +107,6 @@ func handleConn(conn net.Conn, eventChan chan<- interface{}) {
 			continue
 		}
 
-		// Delete the line we just entered - this will be overwritten
-		// with the broadcast from the server.
-		// This also has the advantage of only showing the messages to the user
-		// that the server has processed.
 		if event := constructEvent(user, input.Text()); event != nil {
 			eventChan <- event
 		}
