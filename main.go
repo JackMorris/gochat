@@ -9,8 +9,6 @@ import (
 	"os"
 )
 
-var eventChan = make(chan interface{})
-
 func main() {
 	// Check program args.
 	if len(os.Args) != 2 {
@@ -27,7 +25,8 @@ func main() {
 	fmt.Printf("Listening for connections on %s\n", os.Args[1])
 
 	// Spin up the event handler
-	go eventHandler()
+	var eventChan = make(chan interface{})
+	go eventHandler(eventChan)
 
 	// Handle each new connection.
 	for {
@@ -37,11 +36,11 @@ func main() {
 			log.Print(err)
 			continue
 		}
-		go handleConn(conn)
+		go handleConn(conn, eventChan)
 	}
 }
 
-func eventHandler() {
+func eventHandler(eventChan <-chan interface{}) {
 	// Listen on eventChan, and react to each event.
 	// Keeps track of Users so it can broadcast messages, if needed.
 
@@ -72,12 +71,10 @@ func eventHandler() {
 	}
 }
 
-func handleConn(conn net.Conn) {
-	// Called for each new user. Creates a struct to represent the user, and notifies
-	// that the user has joined through the eventChan.
-	// Messages from this user are also sent thrgough eventChan, including the final
-	// leaveMessage when the user disconnects.
-	// Also handles sending data from the users outputChan to that user through conn.
+func handleConn(conn net.Conn, eventChan chan<- interface{}) {
+	// Called for each user. Handles events caused by this user, and places them
+	// on the specified `eventChan` in the required format.
+	// Also creates the struct representing the new user.
 
 	// Setup a new user.
 	user := new(User)
