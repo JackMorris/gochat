@@ -64,6 +64,8 @@ func eventHandler() {
 		case LeaveEvent:
 			delete(users, event.user)
 			broadcastMsg(event.user.name + " has left")
+		case MsgEvent:
+			broadcastMsg(event.user.name + ": " + event.msg)
 		default:
 			fmt.Printf("Error: unknown event received: %v\n", event)
 		}
@@ -89,7 +91,7 @@ func handleConn(conn net.Conn) {
 	}()
 
 	// Send the join event
-	eventChan <- JoinEvent{user}
+	eventChan <- JoinEvent{user: user}
 
 	// Process input
 	input := bufio.NewScanner(conn)
@@ -98,11 +100,17 @@ func handleConn(conn net.Conn) {
 			// Error processing input. Skip to the next message.
 			continue
 		}
-		// Don't do anything with message for now
+
+		// Delete the line we just entered - this will be overwritten
+		// with the broadcast from the server.
+		// This also has the advantage of only showing the messages to the user
+		// that the server has processed.
+		fmt.Fprintf(conn, "\x1b[1A\x1b[2K")
+		eventChan <- MsgEvent{user: user, msg: input.Text()}
 	}
 
 	// Send leave event
-	eventChan <- LeaveEvent{user}
+	eventChan <- LeaveEvent{user: user}
 	close(user.outputChan)
 	conn.Close()
 }

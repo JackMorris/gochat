@@ -8,3 +8,8 @@ type JoinEvent struct {
 type LeaveEvent struct {
 	user *User
 }
+
+type MsgEvent struct {
+	user *User
+	msg  string
+}
