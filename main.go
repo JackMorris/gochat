@@ -65,6 +65,9 @@ func eventHandler(eventChan <-chan interface{}) {
 			broadcastMsg(event.user.name + " has left")
 		case MsgEvent:
 			broadcastMsg(event.user.name + ": " + event.msg)
+		case NameChangeEvent:
+			event.user.name = event.newName
+			broadcastMsg(event.previousName + " is now known as " + event.newName)
 		default:
 			fmt.Printf("Error: unknown event received: %v\n", event)
 		}
@@ -102,7 +105,6 @@ func handleConn(conn net.Conn, eventChan chan<- interface{}) {
 		// with the broadcast from the server.
 		// This also has the advantage of only showing the messages to the user
 		// that the server has processed.
-		fmt.Fprintf(conn, "\x1b[1A\x1b[2K")
 		if event := constructEvent(user, input.Text()); event != nil {
 			eventChan <- event
 		}
