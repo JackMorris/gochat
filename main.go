@@ -7,6 +7,8 @@ import (
 	"log"
 	"net"
 	"os"
+
+	"github.com/fatih/color"
 )
 
 func main() {
@@ -60,22 +62,29 @@ func eventHandler(eventChan <-chan interface{}) {
 		}
 	}
 
+	// Colors different messages.
+	var (
+		boldRed = color.New(color.FgRed).Add(color.Bold).SprintFunc()
+		cyan    = color.New(color.FgCyan).SprintFunc()
+		green   = color.New(color.FgGreen).SprintFunc()
+	)
+
 	// React to each event.
 	for event := range eventChan {
 		switch event := event.(type) {
 		case BellEvent:
-			broadcastMsg("<<< " + event.user.name + " rang the bell >>>")
+			broadcastMsg(boldRed("<<< " + event.user.name + " rang the bell >>>"))
 		case JoinEvent:
 			users[event.user] = true
-			broadcastMsg(event.user.name + " has joined")
+			broadcastMsg(green(event.user.name + " has joined"))
 		case LeaveEvent:
 			delete(users, event.user)
-			broadcastMsg(event.user.name + " has left")
+			broadcastMsg(green(event.user.name + " has left"))
 		case MsgEvent:
-			broadcastMsg(event.user.name + ": " + event.msg)
+			broadcastMsg(cyan(event.user.name + ": " + event.msg))
 		case NameChangeEvent:
 			event.user.name = event.newName
-			broadcastMsg(event.previousName + " is now known as " + event.newName)
+			broadcastMsg(cyan("<<< " + event.previousName + " is now known as " + event.newName + " >>>"))
 		default:
 			fmt.Printf("Error: unknown event received: %v\n", event)
 		}
