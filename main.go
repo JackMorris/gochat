@@ -43,19 +43,27 @@ func main() {
 
 func eventHandler() {
 	// Listen on eventChan, and react to each event.
-	// Keeps track of users so it can broadcast messages, if needed.
+	// Keeps track of Users so it can broadcast messages, if needed.
 
-	// Set of connected users.
-	users := newUserSet()
+	// Set of connected Users.
+	users := make(map[*User]bool)
 
+	// Utility function to broadcast a message to all users.
+	broadcastMsg := func(msg string) {
+		for user := range users {
+			user.outputChan <- msg
+		}
+	}
+
+	// React to each event.
 	for event := range eventChan {
 		switch event := event.(type) {
 		case JoinEvent:
-			users.add(event.user)
-			users.broadcast(event.user.name + " has joined")
+			users[event.user] = true
+			broadcastMsg(event.user.name + " has joined")
 		case LeaveEvent:
-			users.remove(event.user)
-			users.broadcast(event.user.name + " has left")
+			delete(users, event.user)
+			broadcastMsg(event.user.name + " has left")
 		default:
 			fmt.Printf("Error: unknown event received: %v\n", event)
 		}
